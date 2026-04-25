@@ -247,6 +247,37 @@ export function calculateShippingQuote(order: AnyObj) {
   }
 }
 
+function calculateBaseFreight(zip: string): number {
+  if (!zip) return 50;
+
+  if (zip.startsWith("1")) return 10;
+  if (zip.startsWith("2")) return 20;
+  if (zip.startsWith("3")) return 30;
+
+  return 40;
+}
+
+function calculateExtraByItems(items: any[]): number {
+  let extra = 0;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+
+    if (!item || !item.weight) {
+      extra += 1;
+      continue;
+    }
+
+    if (item.weight > 20) extra += 15;
+    else if (item.weight > 10) extra += 8;
+    else if (item.weight > 0) extra += 2;
+
+    if (i > 4 && extra > 100) break;
+  }
+
+  return extra;
+}
+
 
 export function listOrders() {
   return data;
