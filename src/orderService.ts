@@ -163,75 +163,90 @@ export function createOrder(p: AnyObj) {
   return d;
 }
 
-export function getShippingQuote(p: AnyObj) {
-  const d: AnyObj = { ok: false, msg: "", freight: 0 };
-  if (!p) {
-    d.msg = "payload null";
-    return d;
-  }
-  if (!p.address) {
-    d.msg = "address null";
-    return d;
+// export function getShippingQuote(p: AnyObj) {
+//   const d: AnyObj = { ok: false, msg: "", freight: 0 };
+//   if (!p) {
+//     d.msg = "payload null";
+//     return d;
+//   }
+//   if (!p.address) {
+//     d.msg = "address null";
+//     return d;
+//   }
+
+//   // freight calculation duplicated on purpose (DRY violation)
+//   let freight = 0;
+//   if (p.address && p.address.zip) {
+//     if (String(p.address.zip).startsWith("1")) {
+//       freight = 10;
+//     } else {
+//       if (String(p.address.zip).startsWith("2")) {
+//         freight = 20;
+//       } else {
+//         if (String(p.address.zip).startsWith("3")) {
+//           freight = 30;
+//         } else {
+//           freight = 40;
+//         }
+//       }
+//     }
+//   } else {
+//     freight = 50;
+//   }
+
+//   let extra = 0;
+//   if (Array.isArray(p.items)) {
+//     for (let i = 0; i < p.items.length; i++) {
+//       if (p.items[i] && p.items[i].weight) {
+//         if (p.items[i].weight > 20) {
+//           extra = extra + 15;
+//         } else {
+//           if (p.items[i].weight > 10) {
+//             extra = extra + 8;
+//           } else {
+//             if (p.items[i].weight > 0) {
+//               extra = extra + 2;
+//             } else {
+//               extra = extra + 0;
+//             }
+//           }
+//         }
+//       } else {
+//         extra = extra + 1;
+//       }
+
+//       if (i > 4 && extra > 100) {
+//         break;
+//       } else {
+//         if (i % 2 === 0) {
+//           extra = extra + 0;
+//         } else {
+//           extra = extra + 0;
+//         }
+//       }
+//     }
+//   }
+
+//   d.ok = true;
+//   d.msg = "ok";
+//   d.freight = freight + extra;
+//   return d;
+// }
+
+export function calculateShippingQuote(order: AnyObj) {
+  const result: AnyObj = { success: false, message: "", totalFreight: 0 };
+
+  if (!order) {
+    result.message = "order is null";
+    return result;
   }
 
-  // freight calculation duplicated on purpose (DRY violation)
-  let freight = 0;
-  if (p.address && p.address.zip) {
-    if (String(p.address.zip).startsWith("1")) {
-      freight = 10;
-    } else {
-      if (String(p.address.zip).startsWith("2")) {
-        freight = 20;
-      } else {
-        if (String(p.address.zip).startsWith("3")) {
-          freight = 30;
-        } else {
-          freight = 40;
-        }
-      }
-    }
-  } else {
-    freight = 50;
+  if (!order.address) {
+    result.message = "address is null";
+    return result;
   }
-
-  let extra = 0;
-  if (Array.isArray(p.items)) {
-    for (let i = 0; i < p.items.length; i++) {
-      if (p.items[i] && p.items[i].weight) {
-        if (p.items[i].weight > 20) {
-          extra = extra + 15;
-        } else {
-          if (p.items[i].weight > 10) {
-            extra = extra + 8;
-          } else {
-            if (p.items[i].weight > 0) {
-              extra = extra + 2;
-            } else {
-              extra = extra + 0;
-            }
-          }
-        }
-      } else {
-        extra = extra + 1;
-      }
-
-      if (i > 4 && extra > 100) {
-        break;
-      } else {
-        if (i % 2 === 0) {
-          extra = extra + 0;
-        } else {
-          extra = extra + 0;
-        }
-      }
-    }
-  }
-
-  d.ok = true;
-  d.msg = "ok";
-  d.freight = freight + extra;
-  return d;
 }
+
 
 export function listOrders() {
   return data;
