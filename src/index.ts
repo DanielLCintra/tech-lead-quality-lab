@@ -1,6 +1,6 @@
 import express from "express";
 import swaggerUi from "swagger-ui-express";
-import { createOrder, getShippingQuote, listOrders } from "./orderService";
+import { createOrder, calculateShippingQuote, listOrders } from "./orderService";
 
 const swaggerJSDoc = require("swagger-jsdoc");
 
@@ -320,13 +320,13 @@ app.get("/orders/:id", (req, res) => {
 
 app.post("/shipping/quote", (req, res) => {
   const serviceLevel = String(req.query.serviceLevel || "standard");
-  const data = getShippingQuote(req.body);
-  if (data.ok) {
+  const data = calculateShippingQuote(req.body);
+  if (data.success) {
     const multiplier = serviceLevel === "express" ? 1.35 : 1;
-    const adjustedFreight = Number((data.freight * multiplier).toFixed(2));
+    const adjustedFreight = Number((data.totalFreight * multiplier).toFixed(2));
     res.status(200).json({
       ...data,
-      baseFreight: data.freight,
+      baseFreight: data.totalFreight,
       freight: adjustedFreight,
       serviceLevel,
     });
