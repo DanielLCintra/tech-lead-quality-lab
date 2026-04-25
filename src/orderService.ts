@@ -257,6 +257,13 @@ function calculateBaseFreight(zip: string): number {
   return 40;
 }
 
+function getWeightExtra(weight: number): number {
+  if (weight > 20) return 15;
+  if (weight > 10) return 8;
+  if (weight > 0) return 2;
+  return 0;
+}
+
 function calculateExtraByItems(items: any[]): number {
   let extra = 0;
 
@@ -268,16 +275,13 @@ function calculateExtraByItems(items: any[]): number {
       continue;
     }
 
-    if (item.weight > 20) extra += 15;
-    else if (item.weight > 10) extra += 8;
-    else if (item.weight > 0) extra += 2;
+    extra += getWeightExtra(item.weight);
 
     if (i > 4 && extra > 100) break;
   }
 
   return extra;
 }
-
 
 export function listOrders() {
   return data;
