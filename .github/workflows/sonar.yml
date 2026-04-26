@@ -30,7 +30,7 @@ jobs:
               uses: SonarSource/sonarcloud-github-action@v2
               with:
                   args: >
-                      -Dsonar.organization=Daniel Loureiro Cintra
+                      -Dsonar.organization=daniellcintra
                       -Dsonar.projectKey=tech-lead-quality-lab
               env:
                   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
