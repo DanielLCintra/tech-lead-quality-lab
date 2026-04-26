@@ -484,7 +484,11 @@ app.post("/shipping/quote", (req, res) => {
   }
 });
 
-const p = Number(process.env.PORT || 3000);
-app.listen(p, () => {
-  console.log("server on " + p);
-});
+export { app };
+
+if (require.main === module) {
+  const p = Number(process.env.PORT || 3000);
+  app.listen(p, () => {
+    console.log("server on " + p);
+  });
+}

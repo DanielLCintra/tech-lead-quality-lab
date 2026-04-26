@@ -16,56 +16,35 @@ async function freshModule(): Promise<CreateCustomerServiceModule> {
 
 describe("createCustomer", () => {
   describe("validation", () => {
-    it("should reject when name is missing", async () => {
+    it.each([
+      [{ email: "a@b.com", cpf: "12345678901" }, "name missing"],
+      [{ name: "Test", cpf: "12345678901" }, "email missing"],
+      [{ name: "Test", email: "a@b.com" }, "cpf missing"],
+      [{ name: "Test", email: "invalid", cpf: "12345678901" }, "email invalid"],
+      [{ name: "Test", email: "a@b.com", cpf: "123" }, "cpf too short"],
+    ])("should reject with '%s' → %s", async (payload, expectedMsg) => {
       const { createCustomer } = await freshModule();
-      const result = createCustomer({ email: "a@b.com", cpf: "12345678901" });
-      expect(result).toEqual({ ok: false, msg: "name missing", customer: null });
-    });
-
-    it("should reject when email is missing", async () => {
-      const { createCustomer } = await freshModule();
-      const result = createCustomer({ name: "Test", cpf: "12345678901" });
-      expect(result).toEqual({ ok: false, msg: "email missing", customer: null });
-    });
-
-    it("should reject when cpf is missing", async () => {
-      const { createCustomer } = await freshModule();
-      const result = createCustomer({ name: "Test", email: "a@b.com" });
-      expect(result).toEqual({ ok: false, msg: "cpf missing", customer: null });
-    });
-
-    it("should reject when email has no @", async () => {
-      const { createCustomer } = await freshModule();
-      const result = createCustomer({ name: "Test", email: "invalid", cpf: "12345678901" });
-      expect(result).toEqual({ ok: false, msg: "email invalid", customer: null });
-    });
-
-    it("should reject when cpf is too short", async () => {
-      const { createCustomer } = await freshModule();
-      const result = createCustomer({ name: "Test", email: "a@b.com", cpf: "123" });
-      expect(result).toEqual({ ok: false, msg: "cpf too short", customer: null });
+      const result = createCustomer(payload);
+      expect(result).toEqual({ ok: false, msg: expectedMsg, customer: null });
     });
   });
 
   describe("successful creation", () => {
-    it("should create a customer with valid payload", async () => {
-      const { createCustomer } = await freshModule();
-      const result = createCustomer(validPayload());
-
-      expect(result.ok).toBe(true);
-      expect(result.msg).toBe("ok");
-      expect(result.customer).not.toBeNull();
-      expect(result.customer?.name).toBe("Test User");
-      expect(result.customer?.status).toBe("ACTIVE");
-      expect(result.customer?.segment).toBe("REGULAR");
-      expect(result.customer?.source).toBe("WEB_FORM");
-    });
-
-    it("should lowercase the email on creation", async () => {
+    it("should create a customer with defaults and lowercase email", async () => {
       const { createCustomer } = await freshModule();
       const result = createCustomer(validPayload({ email: "USER@TEST.COM" }));
 
-      expect(result.customer?.email).toBe("user@test.com");
+      expect(result.ok).toBe(true);
+      expect(result.msg).toBe("ok");
+      expect(result.customer).toMatchObject({
+        name: "Test User",
+        email: "user@test.com",
+        status: "ACTIVE",
+        segment: "REGULAR",
+        source: "WEB_FORM",
+      });
+      expect(result.customer?.createdAt).toBeDefined();
+      expect(new Date(result.customer!.createdAt).toISOString()).toBe(result.customer?.createdAt);
     });
 
     it("should apply custom status and segment", async () => {
@@ -76,25 +55,15 @@ describe("createCustomer", () => {
       expect(result.customer?.segment).toBe("VIP");
     });
 
-    it("should preserve IMPORT source", async () => {
+    it.each([
+      ["IMPORT", "IMPORT"],
+      ["CRM", "CRM"],
+      ["UNKNOWN_CHANNEL", "WEB_FORM"],
+      ["STORE", "WEB_FORM"],
+    ])("should map source '%s' to '%s'", async (input, expected) => {
       const { createCustomer } = await freshModule();
-      const result = createCustomer(validPayload({ source: "IMPORT" }));
-
-      expect(result.customer?.source).toBe("IMPORT");
-    });
-
-    it("should preserve CRM source", async () => {
-      const { createCustomer } = await freshModule();
-      const result = createCustomer(validPayload({ source: "CRM" }));
-
-      expect(result.customer?.source).toBe("CRM");
-    });
-
-    it("should default unknown sources to WEB_FORM", async () => {
-      const { createCustomer } = await freshModule();
-      const result = createCustomer(validPayload({ source: "UNKNOWN_CHANNEL" }));
-
-      expect(result.customer?.source).toBe("WEB_FORM");
+      const result = createCustomer(validPayload({ source: input }));
+      expect(result.customer?.source).toBe(expected);
     });
 
     it("should assign sequential ids starting from 1000", async () => {
@@ -105,39 +74,33 @@ describe("createCustomer", () => {
       expect(r1.customer?.id).toBe("1000");
       expect(r2.customer?.id).toBe("1001");
     });
-
-    it("should set createdAt as ISO string", async () => {
-      const { createCustomer } = await freshModule();
-      const result = createCustomer(validPayload());
-
-      expect(result.customer?.createdAt).toBeDefined();
-      expect(new Date(result.customer!.createdAt).toISOString()).toBe(result.customer?.createdAt);
-    });
   });
 
   describe("duplicate checks", () => {
-    it("should reject duplicate email", async () => {
+    it.each([
+      {
+        desc: "exact email",
+        first: { email: "dup@test.com", cpf: "11111111111" },
+        second: { email: "dup@test.com", cpf: "22222222222" },
+        expectedMsg: "email already used",
+      },
+      {
+        desc: "email case-insensitively",
+        first: { email: "user@test.com", cpf: "11111111111" },
+        second: { email: "USER@TEST.COM", cpf: "22222222222" },
+        expectedMsg: "email already used",
+      },
+      {
+        desc: "cpf",
+        first: { email: "a@test.com", cpf: "11111111111" },
+        second: { email: "b@test.com", cpf: "11111111111" },
+        expectedMsg: "cpf already used",
+      },
+    ])("should reject duplicate $desc", async ({ first, second, expectedMsg }) => {
       const { createCustomer } = await freshModule();
-      createCustomer(validPayload({ email: "dup@test.com", cpf: "11111111111" }));
-      const result = createCustomer(validPayload({ email: "dup@test.com", cpf: "22222222222" }));
-
-      expect(result).toEqual({ ok: false, msg: "email already used", customer: null });
-    });
-
-    it("should reject duplicate email case-insensitively", async () => {
-      const { createCustomer } = await freshModule();
-      createCustomer(validPayload({ email: "user@test.com", cpf: "11111111111" }));
-      const result = createCustomer(validPayload({ email: "USER@TEST.COM", cpf: "22222222222" }));
-
-      expect(result).toEqual({ ok: false, msg: "email already used", customer: null });
-    });
-
-    it("should reject duplicate cpf", async () => {
-      const { createCustomer } = await freshModule();
-      createCustomer(validPayload({ email: "a@test.com", cpf: "11111111111" }));
-      const result = createCustomer(validPayload({ email: "b@test.com", cpf: "11111111111" }));
-
-      expect(result).toEqual({ ok: false, msg: "cpf already used", customer: null });
+      createCustomer(validPayload(first));
+      const result = createCustomer(validPayload(second));
+      expect(result).toEqual({ ok: false, msg: expectedMsg, customer: null });
     });
   });
 });
