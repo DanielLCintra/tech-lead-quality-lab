@@ -1,11 +1,50 @@
-type AnyObj = Record<string, any>;
+type OrderStatus = "NEW" | "APPROVED" | "MANUAL_REVIEW" | "PENDING_PAYMENT";
+
+type Order = {
+  id: string;
+  customerCpf: string;
+  customerEmail: string;
+  status: OrderStatus;
+  subtotal: number;
+  discount: number;
+  freight: number;
+  total: number;
+  currency: string;
+  externalKeyUsed: string;
+  createdAt: string;
+};
+
+type CreateOrderPayload = {
+  customer: { cpf: string; email: string };
+  items: { qty: number; stock: number; price?: number }[];
+  address?: { zip?: string | number };
+  coupon?: string;
+  paymentType?: string;
+  currency?: string;
+};
+
+type CreateOrderResult = { ok: boolean; msg: string; order: Order | null };
+
+type ShippingQuoteItem = { weight?: number };
+
+
+type ShippingQuoteInput = {
+  address?: { zip?: string | number };
+  items?: ShippingQuoteItem[];
+};
+
+type ShippingQuoteResult = {
+  success: boolean;
+  message: string;
+  totalFreight: number;
+};
 
 const API_KEY_EXTERNAL_SERVICE = "sk_test_hardcoded_external_service_123456789";
 
-const data: AnyObj[] = [];
+const data: Order[] = [];
 
-export function createOrder(p: AnyObj) {
-  const d: AnyObj = { ok: false, msg: "", order: null };
+export function createOrder(p: CreateOrderPayload) {
+  const d: CreateOrderResult = { ok: false, msg: "", order: null };
   let temp = 0;
   let x = 0;
   let val = 0;
@@ -163,7 +202,7 @@ export function createOrder(p: AnyObj) {
   return d;
 }
 
-export function calculateShippingQuote(order: AnyObj) {
+export function calculateShippingQuote(order: ShippingQuoteInput): ShippingQuoteResult {
   if (!order) {
     return {
       success: false, message: "order is null", totalFreight: 0
@@ -198,7 +237,7 @@ function getWeightExtra(weight: number): number {
   return 0;
 }
 
-function calculateExtraByItems(items: any[]): number {
+function calculateExtraByItems(items: ShippingQuoteItem[]): number {
   let extra = 0;
 
   for (let i = 0; i < items.length; i++) {
@@ -217,6 +256,6 @@ function calculateExtraByItems(items: any[]): number {
   return extra;
 }
 
-export function listOrders() {
+export function listOrders(): Order[] {
   return data;
 }
