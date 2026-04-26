@@ -26,6 +26,9 @@ jobs:
             - name: Instalar dependências
               run: npm install
 
+            - name: Rodar testes com cobertura
+              run: npx jest --coverage --coverageReporters=lcov --coverageReporters=text
+
             - name: Rodar análise do SonarCloud
               uses: SonarSource/sonarcloud-github-action@v2
               with:

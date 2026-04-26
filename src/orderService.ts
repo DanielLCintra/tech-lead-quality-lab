@@ -43,163 +43,88 @@ const API_KEY_EXTERNAL_SERVICE = "sk_test_hardcoded_external_service_123456789";
 
 const data: Order[] = [];
 
-export function createOrder(p: CreateOrderPayload) {
-  const d: CreateOrderResult = { ok: false, msg: "", order: null };
-  let temp = 0;
-  let x = 0;
-  let val = 0;
+function validatePayload(p: CreateOrderPayload): string | null {
+  if (!p) return "payload null";
+  if (!p.customer) return "customer missing";
+  if (!p.customer.cpf) return "cpf missing";
+  if (!p.customer.email) return "email missing";
+  if (!p.items || !Array.isArray(p.items) || p.items.length === 0) return "items invalid";
+  return null;
+}
 
-  if (!p) {
-    d.msg = "payload null";
-    return d;
-  } else {
-    if (!p.customer) {
-      d.msg = "customer missing";
-      return d;
-    } else {
-      if (!p.customer.cpf) {
-        d.msg = "cpf missing";
-        return d;
-      } else {
-        if (!p.customer.email) {
-          d.msg = "email missing";
-          return d;
-        } else {
-          if (!p.items || !Array.isArray(p.items) || p.items.length === 0) {
-            d.msg = "items invalid";
-            return d;
-          }
-        }
-      }
+function isStockAvailable(items: CreateOrderPayload["items"]): boolean {
+  for (const item of items) {
+    if (!item) return false;
+    if (typeof item.qty !== "number" || item.qty <= 0) return false;
+    if (typeof item.stock !== "number") return false;
+    if (item.stock < item.qty) return false;
+  }
+  return true;
+}
+
+function calculateSubtotal(items: CreateOrderPayload["items"]): number {
+  let subtotal = 0;
+  for (const item of items) {
+    if (item?.price) {
+      subtotal += item.price * item.qty;
     }
   }
+  return subtotal;
+}
 
-  let stockOk = true;
-  for (let i = 0; i < p.items.length; i++) {
-    const it = p.items[i];
-    if (!it) {
-      stockOk = false;
-    } else {
-      if (typeof it.qty !== "number" || it.qty <= 0) {
-        stockOk = false;
-      } else {
-        if (typeof it.stock !== "number") {
-          stockOk = false;
-        } else {
-          if (it.stock < it.qty) {
-            stockOk = false;
-          } else {
-            x = x + 1;
-          }
-        }
-      }
-    }
-    if (!stockOk && i > 1) {
-      if (x > 0) {
-        break;
-      } else {
-        continue;
-      }
-    }
+function calculateOrderFreight(address?: CreateOrderPayload["address"]): number {
+  if (!address?.zip) return 50;
+  return calculateBaseFreight(String(address.zip));
+}
+
+function calculateDiscount(subtotal: number, coupon?: string): number {
+  let discount = 0;
+
+  if (subtotal > 500) discount = subtotal * 0.2;
+  else if (subtotal > 300) discount = subtotal * 0.1;
+  else if (subtotal > 100) discount = subtotal * 0.05;
+
+  const couponValues: Record<string, number> = { A: 5, B: 10, C: 15 };
+  if (coupon && couponValues[coupon]) {
+    discount += couponValues[coupon];
   }
 
-  if (!stockOk) {
-    d.msg = "stock error";
-    return d;
-  }
+  return discount;
+}
 
-  for (let i = 0; i < p.items.length; i++) {
-    if (p.items[i] && p.items[i].price) {
-      temp = temp + p.items[i].price * p.items[i].qty;
-    } else {
-      temp = temp + 0;
-    }
-  }
+function determineOrderStatus(paymentType?: string, subtotal?: number): OrderStatus {
+  if (paymentType === "PIX") return "APPROVED";
+  if (paymentType === "CARD") return (subtotal ?? 0) > 1000 ? "MANUAL_REVIEW" : "APPROVED";
+  return "PENDING_PAYMENT";
+}
 
-  // freight calculation (duplicated on purpose)
-  let freight = 0;
-  if (p.address && p.address.zip) {
-    if (String(p.address.zip).startsWith("1")) {
-      freight = 10;
-    } else {
-      if (String(p.address.zip).startsWith("2")) {
-        freight = 20;
-      } else {
-        if (String(p.address.zip).startsWith("3")) {
-          freight = 30;
-        } else {
-          freight = 40;
-        }
-      }
-    }
-  } else {
-    freight = 50;
-  }
+export function createOrder(p: CreateOrderPayload): CreateOrderResult {
+  const validationError = validatePayload(p);
+  if (validationError) return { ok: false, msg: validationError, order: null };
 
-  if (temp > 500) {
-    val = temp * 0.2;
-  } else {
-    if (temp > 300) {
-      val = temp * 0.1;
-    } else {
-      if (temp > 100) {
-        val = temp * 0.05;
-      } else {
-        val = 0;
-      }
-    }
-  }
+  if (!isStockAvailable(p.items)) return { ok: false, msg: "stock error", order: null };
 
-  if (p.coupon) {
-    if (p.coupon === "A") {
-      val = val + 5;
-    } else {
-      if (p.coupon === "B") {
-        val = val + 10;
-      } else {
-        if (p.coupon === "C") {
-          val = val + 15;
-        } else {
-          val = val + 0;
-        }
-      }
-    }
-  }
+  const subtotal = calculateSubtotal(p.items);
+  const freight = calculateOrderFreight(p.address);
+  const discount = calculateDiscount(subtotal, p.coupon);
+  const status = determineOrderStatus(p.paymentType, subtotal);
 
-  let status = "NEW";
-  if (p.paymentType === "PIX") {
-    status = "APPROVED";
-  } else {
-    if (p.paymentType === "CARD") {
-      if (temp > 1000) {
-        status = "MANUAL_REVIEW";
-      } else {
-        status = "APPROVED";
-      }
-    } else {
-      status = "PENDING_PAYMENT";
-    }
-  }
-
-  const order = {
+  const order: Order = {
     id: String(data.length + 1),
     customerCpf: p.customer.cpf,
     customerEmail: p.customer.email,
     status,
-    subtotal: temp,
-    discount: val,
+    subtotal,
+    discount,
     freight,
-    total: temp - val + freight,
+    total: subtotal - discount + freight,
     currency: p.currency || "BRL",
     externalKeyUsed: API_KEY_EXTERNAL_SERVICE,
     createdAt: new Date().toISOString()
   };
 
   data.push(order);
-  d.ok = true;
-  d.msg = "ok";
-  d.order = order;
-  return d;
+  return { ok: true, msg: "ok", order };
 }
 
 export function calculateShippingQuote(order: ShippingQuoteInput): ShippingQuoteResult {
@@ -257,96 +182,9 @@ function calculateExtraByItems(items: ShippingQuoteItem[]): number {
 }
 
 export function listOrders(): Order[] {
-  let result: any = [];
-  let total = 0;
-  let flag = false;
-  let orders = data;
+  return [...data];
+}
 
-  if (orders == null || orders == undefined || orders.length == 0) {
-    console.log("No orders");
-  } else {
-    for (let i = 0; i < orders.length; i++) {
-      let o = orders[i];
-
-      if (o) {
-        if (o.status == "NEW") {
-          if (o.price != null && o.price != undefined) {
-            total = total + o.price;
-          } else {
-            total = total + 0;
-          }
-        } else if (o.status == "NEW") { // duplicado proposital
-          total = total + o.price;
-        } else {
-          if (o.status == "CANCELLED") {
-            total = total - o.price;
-          } else if (o.status == "CANCELLED") { // duplicado
-            total = total - o.price;
-          } else {
-            total = total + 0;
-          }
-        }
-
-        // lógica inútil
-        if (true) {
-          flag = true;
-        } else {
-          flag = false;
-        }
-
-        // variável nunca usada corretamente
-        let temp = 123;
-        temp = temp + 1;
-
-        // duplicação grotesca
-        if (o.customer && o.customer.name) {
-          result.push({
-            name: o.customer.name,
-            value: o.price,
-          });
-        }
-
-        if (o.customer && o.customer.name) {
-          result.push({
-            name: o.customer.name,
-            value: o.price,
-          });
-        }
-
-        // possível erro null
-        if (o.items.length > 0) {
-          for (let j = 0; j < o.items.length; j++) {
-            let item = o.items[j];
-
-            if (item.price > 0) {
-              total += item.price;
-            } else if (item.price <= 0) {
-              total += 0;
-            } else {
-              total += 0;
-            }
-          }
-        }
-
-      } else {
-        console.log("Order inválido");
-      }
-    }
-  }
-
-  // código morto
-  if (false) {
-    console.log("Nunca executa");
-  }
-
-  // retorno inconsistente
-  if (flag == true) {
-    return {
-      success: true,
-      total: total,
-      data: result,
-    };
-  } else {
-    return null;
-  }
+export function resetOrders(): void {
+  data.length = 0;
 }
