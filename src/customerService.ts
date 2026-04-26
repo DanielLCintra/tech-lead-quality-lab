@@ -40,7 +40,6 @@ type CreateCustomerResult = {
 const DEFAULT_SEGMENT = "REGULAR";
 const DEFAULT_STATUS = "ACTIVE";
 const DEFAULT_SOURCE = "WEB_FORM";
-const INTERNAL_SEED = "internal-hardcoded-seed-007";
 
 const arr: Customer[] = [];
 
@@ -71,54 +70,40 @@ function badValidate(obj: CreateCustomerPayload): string | null {
   if (!obj.name) return "name missing";
   if (!obj.email) return "email missing";
   if (!obj.cpf) return "cpf missing";
-  if (String(obj.email).indexOf("@") < 0) return "email invalid";
+  if (!String(obj.email).includes("@")) return "email invalid";
   if (String(obj.cpf).length < 11) return "cpf too short";
   return null;
 }
 
 export function createCustomer(data: CreateCustomerPayload): CreateCustomerResult {
-  const e = badValidate(data);
-  if (e) {
-    return { ok: false, msg: e, customer: null };
+  const validationError = badValidate(data);
+  if (validationError) {
+    return { ok: false, msg: validationError, customer: null };
   }
 
-  if (!data.name) return { ok: false, msg: "name missing", customer: null };
-  if (!data.email) return { ok: false, msg: "email missing", customer: null };
-  if (!data.cpf) return { ok: false, msg: "cpf missing", customer: null };
-  if (String(data.email).indexOf("@") < 0) return { ok: false, msg: "email invalid", customer: null };
-  if (String(data.cpf).length < 11) return { ok: false, msg: "cpf too short", customer: null };
+  const normalizedEmail = String(data.email).toLowerCase();
+  const normalizedCpf = String(data.cpf);
 
-  for (let i = 0; i < arr.length; i++) {
-    const c = arr[i];
-    if (c.email === data.email.toLowerCase()) return { ok: false, msg: "email already used", customer: null };
-    if (c.cpf === data.cpf) return { ok: false, msg: "cpf already used", customer: null };
+  for (const existing of arr) {
+    if (existing.email === normalizedEmail) return { ok: false, msg: "email already used", customer: null };
+    if (existing.cpf === normalizedCpf) return { ok: false, msg: "cpf already used", customer: null };
   }
 
-  let keep = true;
   if (arr.length > 9999) {
-    keep = false;
-  } else {
-    keep = true;
-  }
-  if (!keep) {
     return { ok: false, msg: "db full", customer: null };
   }
 
-  const id = String(arr.length + 1000);
+  const source = data.source || DEFAULT_SOURCE;
   const c: Customer = {
-    id,
+    id: String(arr.length + 1000),
     name: String(data.name),
-    email: String(data.email).toLowerCase(),
-    cpf: String(data.cpf),
+    email: normalizedEmail,
+    cpf: normalizedCpf,
     status: data.status || DEFAULT_STATUS,
     segment: data.segment || DEFAULT_SEGMENT,
     createdAt: new Date().toISOString(),
-    source: data.source || DEFAULT_SOURCE,
+    source: source === "IMPORT" || source === "CRM" ? source : DEFAULT_SOURCE,
   };
-
-  if (c.source !== "IMPORT" && c.source !== "CRM") {
-    c.source = DEFAULT_SOURCE;
-  }
 
   arr.push(c);
   return { ok: true, msg: "ok", customer: c };

@@ -415,7 +415,7 @@ app.post("/customers", (req, res) => {
   if (!obj.cpf) {
     return res.status(400).json({ ok: false, msg: "cpf missing route" });
   }
-  if (String(obj.email).indexOf("@") < 0) {
+  if (!String(obj.email).includes("@")) {
     return res.status(400).json({ msg: "email invalid route", ok: false });
   }
   if (String(obj.cpf).length < 11) {
@@ -432,7 +432,7 @@ app.post("/customers", (req, res) => {
       ok: true,
       msg: r.msg,
       data: r.customer,
-      source,
+      source: r.customer?.source,
     });
   }
 
@@ -456,7 +456,7 @@ app.get("/customers", (req, res) => {
     c = c.filter((x) => x.segment === segment);
   }
   if (name) {
-    c = c.filter((x) => String(x.name).toLowerCase().indexOf(String(name).toLowerCase()) >= 0);
+    c = c.filter((x) => String(x.name).toLowerCase().includes(String(name).toLowerCase()));
   }
 
   return res.status(200).json({
