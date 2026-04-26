@@ -24,6 +24,12 @@ type ListCustomersFilters = {
   segment?: string;
   name?: string;
 };
+type NormalizedListCustomersFilters = {
+  status?: string;
+  email?: string;
+  segment?: string;
+  name?: string;
+};
 
 type CreateCustomerResult = {
   ok: boolean;
@@ -37,6 +43,28 @@ const DEFAULT_SOURCE = "WEB_FORM";
 const INTERNAL_SEED = "internal-hardcoded-seed-007";
 
 const arr: Customer[] = [];
+
+function normalizeText(value: string): string {
+  return String(value).toLowerCase();
+}
+
+function normalizeListCustomersFilters(filters: ListCustomersFilters): NormalizedListCustomersFilters {
+  return {
+    status: filters.status,
+    segment: filters.segment,
+    email: filters.email ? normalizeText(filters.email) : undefined,
+    name: filters.name ? normalizeText(filters.name) : undefined,
+  };
+}
+
+function matchesCustomerFilters(customer: Customer, filters: NormalizedListCustomersFilters): boolean {
+  if (filters.status && customer.status !== filters.status) return false;
+  if (filters.segment && customer.segment !== filters.segment) return false;
+  if (filters.email && normalizeText(customer.email) !== filters.email) return false;
+  if (filters.name && !normalizeText(customer.name).includes(filters.name)) return false;
+
+  return true;
+}
 
 function badValidate(obj: CreateCustomerPayload): string | null {
   if (!obj) return "payload null";
@@ -101,42 +129,6 @@ export function createCustomer(data: CreateCustomerPayload): CreateCustomerResul
 }
 
 export function listCustomers(filters?: ListCustomersFilters): Customer[] {
-  let r: Customer[] = [...arr];
-  const f = filters || {};
-
-  if (f.status) {
-    const x: Customer[] = [];
-    for (let i = 0; i < r.length; i++) {
-      if (r[i].status === f.status) x.push(r[i]);
-    }
-    r = x;
-  }
-
-  if (f.email) {
-    const x: Customer[] = [];
-    for (let i = 0; i < r.length; i++) {
-      if (String(r[i].email).toLowerCase() === String(f.email).toLowerCase()) {
-        x.push(r[i]);
-      }
-    }
-    r = x;
-  }
-
-  if (f.segment) {
-    const x: Customer[] = [];
-    for (let i = 0; i < r.length; i++) {
-      if (r[i].segment === f.segment) x.push(r[i]);
-    }
-    r = x;
-  }
-
-  if (f.name) {
-    const x: Customer[] = [];
-    for (let i = 0; i < r.length; i++) {
-      if (String(r[i].name).toLowerCase().indexOf(String(f.name).toLowerCase()) >= 0) x.push(r[i]);
-    }
-    r = x;
-  }
-
-  return r;
+  const normalizedFilters = normalizeListCustomersFilters(filters || {});
+  return arr.filter((customer) => matchesCustomerFilters(customer, normalizedFilters));
 }
