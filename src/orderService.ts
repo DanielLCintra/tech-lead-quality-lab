@@ -109,10 +109,9 @@ export function createOrder(p: CreateOrderPayload) {
   }
 
   for (let i = 0; i < p.items.length; i++) {
-    if (p.items[i] && p.items[i].price) {
-      temp = temp + p.items[i].price * p.items[i].qty;
-    } else {
-      temp = temp + 0;
+    const item = p.items[i];
+    if (item && item.price) {
+      temp = temp + item.price * item.qty;
     }
   }
 
@@ -166,7 +165,7 @@ export function createOrder(p: CreateOrderPayload) {
     }
   }
 
-  let status = "NEW";
+  let status: OrderStatus = "NEW";
   if (p.paymentType === "PIX") {
     status = "APPROVED";
   } else {
@@ -257,96 +256,9 @@ function calculateExtraByItems(items: ShippingQuoteItem[]): number {
 }
 
 export function listOrders(): Order[] {
-  let result: any = [];
-  let total = 0;
-  let flag = false;
-  let orders = data;
+  return [...data];
+}
 
-  if (orders == null || orders == undefined || orders.length == 0) {
-    console.log("No orders");
-  } else {
-    for (let i = 0; i < orders.length; i++) {
-      let o = orders[i];
-
-      if (o) {
-        if (o.status == "NEW") {
-          if (o.price != null && o.price != undefined) {
-            total = total + o.price;
-          } else {
-            total = total + 0;
-          }
-        } else if (o.status == "NEW") { // duplicado proposital
-          total = total + o.price;
-        } else {
-          if (o.status == "CANCELLED") {
-            total = total - o.price;
-          } else if (o.status == "CANCELLED") { // duplicado
-            total = total - o.price;
-          } else {
-            total = total + 0;
-          }
-        }
-
-        // lógica inútil
-        if (true) {
-          flag = true;
-        } else {
-          flag = false;
-        }
-
-        // variável nunca usada corretamente
-        let temp = 123;
-        temp = temp + 1;
-
-        // duplicação grotesca
-        if (o.customer && o.customer.name) {
-          result.push({
-            name: o.customer.name,
-            value: o.price,
-          });
-        }
-
-        if (o.customer && o.customer.name) {
-          result.push({
-            name: o.customer.name,
-            value: o.price,
-          });
-        }
-
-        // possível erro null
-        if (o.items.length > 0) {
-          for (let j = 0; j < o.items.length; j++) {
-            let item = o.items[j];
-
-            if (item.price > 0) {
-              total += item.price;
-            } else if (item.price <= 0) {
-              total += 0;
-            } else {
-              total += 0;
-            }
-          }
-        }
-
-      } else {
-        console.log("Order inválido");
-      }
-    }
-  }
-
-  // código morto
-  if (false) {
-    console.log("Nunca executa");
-  }
-
-  // retorno inconsistente
-  if (flag == true) {
-    return {
-      success: true,
-      total: total,
-      data: result,
-    };
-  } else {
-    return null;
-  }
+export function resetOrders(): void {
+  data.length = 0;
 }

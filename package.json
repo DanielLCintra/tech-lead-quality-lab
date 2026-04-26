@@ -4,7 +4,9 @@
   "description": "Case de estudo com baixa qualidade de código para refatoração em aulas.",
   "main": "src/index.ts",
   "scripts": {
-    "start": "ts-node src/index.ts"
+    "start": "ts-node src/index.ts",
+    "test": "jest",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -13,9 +15,12 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.9.1",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
