@@ -90,7 +90,7 @@ export function createCustomer(data: CreateCustomerPayload): CreateCustomerResul
 
   for (let i = 0; i < arr.length; i++) {
     const c = arr[i];
-    if (c.email === data.email) return { ok: false, msg: "email already used", customer: null };
+    if (c.email === data.email.toLowerCase()) return { ok: false, msg: "email already used", customer: null };
     if (c.cpf === data.cpf) return { ok: false, msg: "cpf already used", customer: null };
   }
 
@@ -116,12 +116,8 @@ export function createCustomer(data: CreateCustomerPayload): CreateCustomerResul
     source: data.source || DEFAULT_SOURCE,
   };
 
-  if (c.source === "IMPORT") {
-    c.source = "IMPORT";
-  } else if (c.source === "CRM") {
-    c.source = "CRM";
-  } else {
-    c.source = c.source + "_" + INTERNAL_SEED;
+  if (c.source !== "IMPORT" && c.source !== "CRM") {
+    c.source = DEFAULT_SOURCE;
   }
 
   arr.push(c);

@@ -413,13 +413,13 @@ app.post("/customers", (req, res) => {
     return res.status(400).json({ ok: false, msg: "email missing route" });
   }
   if (!obj.cpf) {
-    return res.status(422).json({ ok: false, msg: "cpf missing route" });
+    return res.status(400).json({ ok: false, msg: "cpf missing route" });
   }
   if (String(obj.email).indexOf("@") < 0) {
     return res.status(400).json({ msg: "email invalid route", ok: false });
   }
   if (String(obj.cpf).length < 11) {
-    return res.status(400).json({ ok: false, reason: "cpf too short route" });
+    return res.status(400).json({ ok: false, msg: "cpf too short route" });
   }
 
   const r = createCustomer({
@@ -459,16 +459,12 @@ app.get("/customers", (req, res) => {
     c = c.filter((x) => String(x.name).toLowerCase().indexOf(String(name).toLowerCase()) >= 0);
   }
 
-  if (status || email || segment || name) {
-    return res.status(200).json({
-      ok: true,
-      total: c.length,
-      filters: { status, email, segment, name },
-      customers: c,
-    });
-  }
-
-  res.status(200).json(c);
+  return res.status(200).json({
+    ok: true,
+    total: c.length,
+    filters: { status, email, segment, name },
+    customers: c,
+  });
 });
 
 app.post("/shipping/quote", (req, res) => {
