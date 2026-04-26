@@ -27,7 +27,7 @@ jobs:
               run: npm install
 
             - name: Rodar análise do SonarCloud
-              uses: SonarSource/SonarCloud-scan-action@v2
+              uses: SonarSource/sonarcloud-github-action@v2
               with:
                   args: >
                       -Dsonar.organization=Daniel Loureiro Cintra
